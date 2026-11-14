@@ -1,0 +1,11 @@
+Flask
+Flask-SQLAlchemy
+Flask-Login
+Flask-WTF
+opencv-python
+mediapipe
+numpy
+pyttsx3
+SpeechRecognition
+Pillow
+python-dotenv

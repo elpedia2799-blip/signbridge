@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Sign Language Dictionary - SignBridge{% endblock %}
+{% block content %}
+<h2>Sign Language Dictionary</h2>
+<p class="text-muted">Browse signs and demonstrations across all available sign languages.</p>
+
+<form method="GET" class="row g-2 mb-4">
+    <div class="col-md-6">
+        <input type="text" name="q" class="form-control" placeholder="Search signs by word..." value="{{ query }}">
+    </div>
+    <div class="col-md-4">
+        <select name="lang" class="form-select">
+            <option value="">All Sign Languages</option>
+            {% for l in languages %}
+                <option value="{{ l }}" {% if lang_filter == l %}selected{% endif %}>{{ l }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-primary w-100" type="submit">Filter</button>
+    </div>
+</form>
+
+<div class="row">
+    {% for sign in signs %}
+        <div class="col-md-4 mb-3">
+            <div class="card h-100 shadow-sm">
+                {% if sign.media_url %}
+                    {% if sign.media_url.endswith(('.mp4', '.webm')) %}
+                        <video src="{{ url_for('dictionary.serve_media', filename=sign.media_url) }}" class="card-img-top" controls muted></video>
+                    {% else %}
+                        <img src="{{ url_for('dictionary.serve_media', filename=sign.media_url) }}" class="card-img-top" alt="{{ sign.word }}">
+                    {% endif %}
+                {% endif %}
+                <div class="card-body">
+                    <span class="badge bg-primary mb-2">{{ sign.language }}</span>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="card-title mb-0">{{ sign.word }}</h5>
+                        <span class="badge bg-secondary">{{ sign.category or 'General' }}</span>
+                    </div>
+                    <p class="card-text">{{ sign.description }}</p>
+                    {% if sign.landmarks_json %}
+                        <span class="badge bg-success">Live Recognition Ready</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <p class="text-muted">No signs found in the dictionary yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}

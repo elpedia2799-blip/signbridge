@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Welcome to {{ settings.site_name if settings else 'SignBridge' }}{% endblock %}
+{% block content %}
+{% if announcements %}
+    {% for a in announcements %}
+        <div class="alert alert-info shadow-sm">
+            <strong>{{ a.title }}:</strong> {{ a.message }}
+        </div>
+    {% endfor %}
+{% endif %}
+
+<div class="p-5 mb-4 bg-light rounded-3 text-center">
+    <h1 class="display-5 fw-bold">{{ settings.hero_title if settings else 'Bridge the Communication Gap Across All Sign Languages' }}</h1>
+    <p class="fs-4">{{ settings.hero_subtitle if settings else 'Real-time sign language translation, multi-language sign library, and interactive learning tools.' }}</p>
+    <div class="d-flex justify-content-center gap-3 mt-4">
+        <a href="{{ url_for('interpreter.live') }}" class="btn btn-primary btn-lg">Launch Live Interpreter</a>
+        <a href="{{ url_for('dictionary.index') }}" class="btn btn-outline-dark btn-lg">Browse Sign Dictionary</a>
+    </div>
+</div>
+{% endblock %}

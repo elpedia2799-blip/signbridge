@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+{% block title %}Admin Master Control Panel - SignBridge{% endblock %}
+{% block content %}
+<div class="alert alert-dark d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <strong>Admin Master Control Panel:</strong> Full unrestricted control over all sign languages, gestures, user accounts, learning lessons, broadcasts, and site settings.
+    </div>
+    <span class="badge bg-warning text-dark">Registered Users: {{ users|length }}</span>
+</div>
+
+<!-- Navigation Tabs for Full Control -->
+<ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-bold" id="signs-tab" data-bs-toggle="tab" data-bs-target="#signs-pane" type="button" role="tab">1. Signs & Gestures</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-pane" type="button" role="tab">2. User Accounts</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold" id="lessons-tab" data-bs-toggle="tab" data-bs-target="#lessons-pane" type="button" role="tab">3. Learning Lessons</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold" id="announcements-tab" data-bs-toggle="tab" data-bs-target="#announcements-pane" type="button" role="tab">4. Global Announcements</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-bold" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings-pane" type="button" role="tab">5. Site Settings</button>
+    </li>
+</ul>
+
+<div class="tab-content" id="adminTabsContent">
+    <!-- TAB 1: SIGNS & GESTURES -->
+    <div class="tab-pane fade show active" id="signs-pane" role="tabpanel">
+        <div class="row mb-5">
+            <div class="col-md-6">
+                <div class="card p-4 shadow-sm">
+                    <h4 class="mb-3">Upload Sign Language Gesture</h4>
+                    <form method="POST" action="{{ url_for('admin.add_sign') }}" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Sign Language *</label>
+                            <select name="language" class="form-select mb-2">
+                                <option value="ASL (American Sign Language)">ASL (American Sign Language)</option>
+                                <option value="GSL (Ghanaian Sign Language)">GSL (Ghanaian Sign Language)</option>
+                                <option value="BSL (British Sign Language)">BSL (British Sign Language)</option>
+                                <option value="LSF (French Sign Language)">LSF (French Sign Language)</option>
+                                <option value="Auslan (Australian Sign Language)">Auslan (Australian Sign Language)</option>
+                                <option value="ISL (Indian Sign Language)">ISL (Indian Sign Language)</option>
+                                <option value="JSL (Japanese Sign Language)">JSL (Japanese Sign Language)</option>
+                                <option value="International Sign (IS)">International Sign (IS)</option>
+                            </select>
+                            <input type="text" name="custom_language" class="form-control form-control-sm" placeholder="Or type any other Sign Language name here...">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Sign Word / Meaning *</label>
+                            <input type="text" name="word" class="form-control" placeholder="e.g. Hello, Thank You, Water, School" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Category</label>
+                            <select name="category" class="form-select">
+                                <option value="Greetings">Greetings</option>
+                                <option value="Alphabet">Alphabet</option>
+                                <option value="Numbers">Numbers</option>
+                                <option value="Common Phrases">Common Phrases</option>
+                                <option value="Emergency">Emergency</option>
+                                <option value="Education">Education</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Description / Instructions</label>
+                            <textarea name="description" class="form-control" rows="2" placeholder="Describe how to perform this sign..."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Upload Image or Video Demonstration</label>
+                            <input type="file" name="media_file" class="form-control" accept="image/*,video/mp4,video/webm">
+                        </div>
+
+                        <input type="hidden" name="landmarks_json" id="landmarks_json">
+                        <div class="mb-3">
+                            <span id="capture-status" class="badge bg-secondary">No live hand pose captured yet</span>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100 fw-bold">Publish Sign to All Accounts</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card p-4 shadow-sm h-100">
+                    <h4>Capture Live Hand Pose (For Real-Time AI Recognition)</h4>
+                    <p class="text-muted small">Show the hand gesture in front of your webcam and click <strong>Capture Hand Pose</strong> so the Live Interpreter recognizes and speaks it across all user accounts.</p>
+                    <div class="ratio ratio-4x3 bg-black rounded overflow-hidden position-relative mb-3">
+                        <video id="capture_webcam" autoplay playsinline muted class="w-100 h-100 object-fit-cover"></video>
+                        <canvas id="capture_canvas" class="position-absolute top-0 start-0 w-100 h-100"></canvas>
+                    </div>
+                    <button type="button" id="capture-pose-btn" class="btn btn-primary w-100">Capture Hand Pose</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h4>Manage Published Signs</h4>
+            {% if signs %}
+            <form method="POST" action="{{ url_for('admin.clear_all_signs') }}" onsubmit="return confirm('WARNING: Delete ALL signs from the database?');">
+                <button type="submit" class="btn btn-sm btn-outline-danger">Delete All Signs</button>
+            </form>
+            {% endif %}
+        </div>
+        <div class="table-responsive bg-white rounded shadow-sm p-3">
+            <table class="table table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Language</th>
+                        <th>Word</th>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th>Live Pose</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in signs %}
+                    <tr>
+                        <form method="POST" action="{{ url_for('admin.edit_sign', sign_id=s.id) }}">
+                            <td><input type="text" name="language" value="{{ s.language }}" class="form-control form-control-sm"></td>
+                            <td><input type="text" name="word" value="{{ s.word }}" class="form-control form-control-sm fw-bold"></td>
+                            <td><input type="text" name="category" value="{{ s.category }}" class="form-control form-control-sm"></td>
+                            <td><input type="text" name="description" value="{{ s.description or '' }}" class="form-control form-control-sm"></td>
+                            <td>
+                                {% if s.landmarks_json %}
+                                    <span class="badge bg-success">Saved</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark border">None</span>
+                                {% endif %}
+                            </td>
+                            <td class="d-flex gap-1">
+                                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                        </form>
+                                <form method="POST" action="{{ url_for('admin.delete_sign', sign_id=s.id) }}" onsubmit="return confirm('Remove this sign?');">
+                                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                </form>
+                            </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-3">No signs uploaded yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 2: USER ACCOUNTS CONTROL -->
+    <div class="tab-pane fade" id="users-pane" role="tabpanel">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card p-3 shadow-sm mb-4">
+                    <h5>Create New User Account</h5>
+                    <form method="POST" action="{{ url_for('admin.create_user') }}">
+                        <div class="mb-2">
+                            <label class="form-label">Username</label>
+                            <input type="text" name="username" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="text" name="password" class="form-control form-control-sm" required>
+                        </div>
+                        <button type="submit" class="btn btn-success btn-sm w-100">Create User</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="table-responsive bg-white rounded shadow-sm p-3">
+                    <h5>All User Accounts</h5>
+                    <table class="table table-hover align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Reset Password</th>
+                                <th>Controls</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in users %}
+                            <tr>
+                                <td>{{ u.id }}</td>
+                                <td class="fw-bold">{{ u.username }}</td>
+                                <td>{{ u.email }}</td>
+                                <td>
+                                    {% if u.is_active_account %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Suspended</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('admin.reset_user_password', user_id=u.id) }}" class="d-flex gap-1">
+                                        <input type="text" name="new_password" placeholder="New password" class="form-control form-control-sm" required>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Set</button>
+                                    </form>
+                                </td>
+                                <td class="d-flex gap-1">
+                                    <form method="POST" action="{{ url_for('admin.toggle_user', user_id=u.id) }}">
+                                        <button type="submit" class="btn btn-sm btn-warning">
+                                            {{ 'Suspend' if u.is_active_account else 'Activate' }}
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('admin.delete_user', user_id=u.id) }}" onsubmit="return confirm('Permanently delete user {{ u.username }}?');">
+                                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">No registered users yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: LEARNING LESSONS CONTROL -->
+    <div class="tab-pane fade" id="lessons-pane" role="tabpanel">
+        <div class="row">
+            <div class="col-md-5">
+                <div class="card p-3 shadow-sm mb-4">
+                    <h5>Add New Learning Lesson</h5>
+                    <form method="POST" action="{{ url_for('admin.add_lesson') }}">
+                        <div class="mb-2">
+                            <label class="form-label">Lesson Title</label>
+                            <input type="text" name="title" class="form-control" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Sign Language</label>
+                            <input type="text" name="language" value="ASL (American Sign Language)" class="form-control">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Difficulty Level</label>
+                            <select name="level" class="form-select">
+                                <option value="Beginner">Beginner</option>
+                                <option value="Intermediate">Intermediate</option>
+                                <option value="Advanced">Advanced</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Order Number</label>
+                            <input type="number" name="order_index" value="1" class="form-control">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Lesson Content</label>
+                            <textarea name="content" rows="4" class="form-control" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Publish Lesson</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-7">
+                <div class="bg-white p-3 rounded shadow-sm">
+                    <h5>Published Lessons</h5>
+                    <ul class="list-group">
+                        {% for l in lessons %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ l.title }}</strong> <span class="badge bg-primary">{{ l.language }}</span> <span class="badge bg-info">{{ l.level }}</span>
+                                <p class="mb-0 small text-muted">{{ l.content }}</p>
+                            </div>
+                            <form method="POST" action="{{ url_for('admin.delete_lesson', lesson_id=l.id) }}">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item text-muted">No lessons published yet.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: GLOBAL ANNOUNCEMENTS CONTROL -->
+    <div class="tab-pane fade" id="announcements-pane" role="tabpanel">
+        <div class="row">
+            <div class="col-md-5">
+                <div class="card p-3 shadow-sm mb-4">
+                    <h5>Broadcast Global Announcement</h5>
+                    <p class="small text-muted">Announcements appear at the top of the homepage and every logged-in user dashboard.</p>
+                    <form method="POST" action="{{ url_for('admin.add_announcement') }}">
+                        <div class="mb-2">
+                            <label class="form-label">Announcement Title</label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g. New GSL Signs Added!" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Message</label>
+                            <textarea name="message" rows="3" class="form-control" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Broadcast Now</button>
+                    </form>
+                </div>
+            </div>
+            <div class="col-md-7">
+                <div class="bg-white p-3 rounded shadow-sm">
+                    <h5>Active Announcements</h5>
+                    <ul class="list-group">
+                        {% for a in announcements %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ a.title }}</strong>
+                                <p class="mb-0 small">{{ a.message }}</p>
+                            </div>
+                            <form method="POST" action="{{ url_for('admin.delete_announcement', ann_id=a.id) }}">
+                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                            </form>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item text-muted">No active announcements.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 5: GLOBAL SITE SETTINGS CONTROL -->
+    <div class="tab-pane fade" id="settings-pane" role="tabpanel">
+        <div class="card p-4 shadow-sm" style="max-width: 700px;">
+            <h5>Platform Branding & Access Controls</h5>
+            <form method="POST" action="{{ url_for('admin.update_settings') }}">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Platform / Site Name</label>
+                    <input type="text" name="site_name" value="{{ settings.site_name }}" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Homepage Main Headline</label>
+                    <input type="text" name="hero_title" value="{{ settings.hero_title }}" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Homepage Subtitle</label>
+                    <textarea name="hero_subtitle" rows="2" class="form-control" required>{{ settings.hero_subtitle }}</textarea>
+                </div>
+                <div class="form-check form-switch mb-4">
+                    <input class="form-check-input" type="checkbox" id="allowRegSwitch" name="allow_registration" {% if settings.allow_registration %}checked{% endif %}>
+                    <label class="form-check-label fw-bold" for="allowRegSwitch">Allow New Public User Registrations</label>
+                </div>
+                <button type="submit" class="btn btn-dark w-100">Save Global Settings</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const videoEl = document.getElementById('capture_webcam');
+    const canvasEl = document.getElementById('capture_canvas');
+    const canvasCtx = canvasEl.getContext('2d');
+    const captureBtn = document.getElementById('capture-pose-btn');
+    const landmarksInput = document.getElementById('landmarks_json');
+    const statusBadge = document.getElementById('capture-status');
+
+    let latestLandmarks = [];
+
+    if (videoEl && window.Hands) {
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        hands.onResults(results => {
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasEl.width, canvasEl.height);
+
+            latestLandmarks = [];
+            if (results.multiHandLandmarks) {
+                for (const landmarks of results.multiHandLandmarks) {
+                    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 2});
+                    drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 1});
+                    landmarks.forEach(lm => {
+                        latestLandmarks.push(lm.x, lm.y, lm.z);
+                    });
+                }
+            }
+            canvasCtx.restore();
+        });
+
+        const camera = new Camera(videoEl, {
+            onFrame: async () => {
+                canvasEl.width = videoEl.videoWidth;
+                canvasEl.height = videoEl.videoHeight;
+                await hands.send({ image: videoEl });
+            },
+            width: 640,
+            height: 480
+        });
+        camera.start();
+    }
+
+    captureBtn.addEventListener('click', () => {
+        if (latestLandmarks.length === 0) {
+            alert("No hand detected in the camera! Hold your gesture in front of the camera and try again.");
+            return;
+        }
+        landmarksInput.value = JSON.stringify(latestLandmarks);
+        statusBadge.className = "badge bg-success";
+        statusBadge.innerText = `Hand Pose Captured (${latestLandmarks.length / 3} landmarks ready)`;
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Learning Centre - SignBridge{% endblock %}
+{% block content %}
+<h2>Sign Language Learning Centre</h2>
+<div class="list-group mt-3">
+    {% for lesson in lessons %}
+        <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5>{{ lesson.title }} <span class="badge bg-primary">{{ lesson.language }}</span></h5>
+                <span class="badge bg-info">{{ lesson.level }}</span>
+            </div>
+            <p class="mb-0 mt-2">{{ lesson.content }}</p>
+        </div>
+    {% else %}
+        <p class="text-muted">No lessons available yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}
